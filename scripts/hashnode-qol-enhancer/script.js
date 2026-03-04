@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hashnode QoL Enhancer
 // @namespace    https://github.com/lufcmattylad
-// @version      26.1.1
+// @version      26.1.2
 // @description  Preview button on Hashnode draft editor + Edit button on *.hashnode.dev posts
 // @author       Matt Mulvaney - @Matt_Mulvaney
 // @match        https://hashnode.com/draft/*
@@ -14,6 +14,13 @@
 
 (function () {
   'use strict';
+
+  // ---------------------------------------------------------------------------
+  // Config
+  // ---------------------------------------------------------------------------
+
+  // Hardcode your blog host here, e.g. "blog.yourdomain.com" or "yourname.hashnode.dev"
+  const HASHNODE_BLOG_HOST = '';
 
   // ---------------------------------------------------------------------------
   // Shared helpers
@@ -79,29 +86,6 @@
   // Part 1: Draft preview button (hashnode.com/draft/*)
   // ---------------------------------------------------------------------------
 
-  function getPosthogReferrer() {
-    const phKey = Object.keys(localStorage).find(
-      k => k.startsWith('ph_') && k.endsWith('_posthog')
-    );
-    if (!phKey) return null;
-    try {
-      const obj = JSON.parse(localStorage.getItem(phKey));
-      return obj?.$initial_person_info?.r ?? null;
-    } catch {
-      return null;
-    }
-  }
-
-  function normalizeBlog(ref) {
-    if (!ref) return null;
-    try {
-      const urlObj = new URL(ref.startsWith('http') ? ref : `https://${ref}`);
-      return urlObj.host;
-    } catch {
-      return ref.replace(/^https?:\/\//, '').replace(/\/+$/, '');
-    }
-  }
-
   function getDraftIdFromUrl() {
     const parts = window.location.pathname.split('/');
     if (parts[1] !== 'draft') return null;
@@ -109,10 +93,19 @@
   }
 
   function buildPreviewUrl() {
-    const ref = getPosthogReferrer();
-    const blog = normalizeBlog(ref);
+    const blog = HASHNODE_BLOG_HOST || null;
     const id = getDraftIdFromUrl();
-    if (!blog || !id) return null;
+
+    if (!blog) {
+      alert('HASHNODE_BLOG_HOST is not set. Please edit the userscript and set a valid blog host.');
+      return null;
+    }
+
+    if (!id) {
+      alert('Could not determine draft ID from the current URL.');
+      return null;
+    }
+
     return `https://${blog}/preview/${id}`;
   }
 
@@ -139,7 +132,7 @@
     btn.addEventListener('click', () => {
       const url = buildPreviewUrl();
       if (!url) {
-        alert('Could not determine preview URL (missing blog referrer or draft ID).');
+        // buildPreviewUrl already shows a specific alert
         return;
       }
       window.open(url, '_blank', 'noopener');
